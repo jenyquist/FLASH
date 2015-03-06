@@ -27,7 +27,7 @@ def thiem(Tfac, Ttot, del_h, Ro, Dw):
     return Q
     
 # Code to calculate the cumulative flow
-def calculate_flow(Tfac,Ttot,del_h,Ro,Dw,ambient=True):
+def calculate_flow(Tfac,Ttot,del_h,Ro,Dw,drawdown,ambient=True):
     # Loop over the number of fractures
     Q_sim = np.zeros(len(Tfac))
     Qfrac = 0.0
@@ -40,53 +40,54 @@ def calculate_flow(Tfac,Ttot,del_h,Ro,Dw,ambient=True):
     Q_sim = np.flipud(Q_sim) #Reverse to go from top of well down
     return Q_sim
     
-# Calculated Flows for given model parameters
-Qamb_sim = calculate_flow(Tfac,Ttot,del_h,Ro,Dw,ambient=True)
-print('Ambient Flow:', Qamb_sim)
-# Pumped flow
-Qstress_sim = calculate_flow(Tfac,Ttot,del_h,Ro,Dw,ambient=False)
-print('Pumped Flow:', Qstress_sim)
-
+def interpolate_flow(Qamb_sim, Qstress_sim, depth, bot_well):
 # Interpolate flow values
-z = np.arange(0,bot_well,.1)
-qa_calc = np.zeros(len(z))
-qs_calc = np.zeros(len(z))
-qafit_calc = np.zeros(len(z))
-qsfit_calc = np.zeros(len(z))
-d = [0, bot_well]
-d[1:1] = depth
-for i in range(len(depth)):
-    qa_calc[np.logical_and(z >= d[i], z < d[i+1])] = Qamb_sim[i]
-    qs_calc[np.logical_and(z >= d[i], z < d[i+1])] = Qstress_sim[i]
-    qafit_calc[np.logical_and(z >= d[i], z < d[i+1])] = Qamb_fit[i]
-    qsfit_calc[np.logical_and(z >= d[i], z < d[i+1])] = Qstress_fit[i]
+    z = np.arange(0,bot_well,.1)
+    qa_calc = np.zeros(len(z))
+    qs_calc = np.zeros(len(z))
+    qafit_calc = np.zeros(len(z))
+    qsfit_calc = np.zeros(len(z))
+    d = [0, bot_well]
+    d[1:1] = depth
+    for i in range(len(depth)):
+        qa_calc[np.logical_and(z >= d[i], z < d[i+1])] = Qamb_sim[i]
+        qs_calc[np.logical_and(z >= d[i], z < d[i+1])] = Qstress_sim[i]
+    return (qa_calc, qs_calc, z)
     
     
+def plot_fit(Qa, Qs, Za, Zs, qa_calc, qs_calc, z, bot_casing, bot_well):
     # Plot the results
-# Axis limits can be adjusted below with xlim and ylim
-fig = plt.figure()
-fig.set_size_inches(8,10)
-fig.subplots_adjust(wspace=0.5)
-ax1 = fig.add_subplot(1,2,1)
-ax1.set_xlim(-0.025,0.025)
-ax1.set_ylim(bot_casing,bot_well)
-#ax1.xaxis.tick_top()
-plt.plot(Qa,Za,'ob')
-plt.plot(qa_calc,z,'b--', linewidth=3)
-plt.plot(qafit_calc,z,'b-')
-plt.title('Ambient Flow')
-plt.gca().invert_yaxis()
-plt.xlabel('Upward Flow (gpm)')
-plt.ylabel('Depth in Feet')
-ax2 = fig.add_subplot(1,2,2)
-plt.plot(Qs,Zs,'or')
-plt.plot(qs_calc,z,'r--', linewidth=3)
-plt.plot(qsfit_calc,z,'r-')
-plt.title('Pumped Flow')
-ax2.set_xlim(-0.5,1.0)
-ax2.set_ylim(bot_casing,bot_well)
-#ax2.xaxis.tick_top()
-plt.gca().invert_yaxis()
-plt.xlabel('Upward Flow (gpm)')
-plt.ylabel('Depth in Feet')
-plt.show()
+    # Axis limits can be adjusted below with xlim and ylim
+
+    fig = plt.figure()
+    fig.set_size_inches(8,10)
+    fig.subplots_adjust(wspace=0.5)
+    ax1 = fig.add_subplot(1,2,1)
+    ax1.set_xlim(-0.025,0.025)
+    ax1.set_ylim(bot_casing,bot_well)
+    #ax1.xaxis.tick_top()
+    plt.plot(Qa,Za,'ob')
+    plt.plot(qa_calc,z,'b--', linewidth=3)
+    plt.title('Ambient Flow')
+    plt.gca().invert_yaxis()
+    plt.xlabel('Upward Flow (gpm)')
+    plt.ylabel('Depth in Feet')
+    ax2 = fig.add_subplot(1,2,2)
+    plt.plot(Qs,Zs,'or')
+    plt.plot(qs_calc,z,'r--', linewidth=3)
+    plt.title('Pumped Flow')
+    ax2.set_xlim(-0.5,1.0)
+    ax2.set_ylim(bot_casing,bot_well)
+    #ax2.xaxis.tick_top()
+    plt.gca().invert_yaxis()
+    plt.xlabel('Upward Flow (gpm)')
+    plt.ylabel('Depth in Feet')
+    plt.show()
+
+def model(Tfac, del_h, depth, Qa, Qs, Za, Zs, Ttot, Ro, Dw, drawdown, 
+          bot_casing, bot_well):
+    # Calculated Flows for given model parameters
+    Qamb_sim = calculate_flow(Tfac,Ttot,del_h,Ro,Dw,drawdown,ambient=True)
+    Qstress_sim = calculate_flow(Tfac,Ttot,del_h,Ro,Dw,drawdown,ambient=False)
+    (qa_calc, qs_calc, z) = interpolate_flow(Qamb_sim, Qstress_sim, depth, bot_well)
+    plot_fit(Qa, Qs, Za, Zs, qa_calc, qs_calc, z, bot_casing, bot_well)
